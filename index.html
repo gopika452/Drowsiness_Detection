@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Look forward</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+            font-family: Arial, sans-serif;
+        }
+        video {
+            width: 90%;
+            max-width: 600px;
+            border: 2px solid #007bff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live Video Feed</h1>
+    <video id="video" autoplay></video>
+    <button id="flipButton">Flip Camera</button>
+
+    <script>
+        let videoElement = document.getElementById('video');
+        let flipButton = document.getElementById('flipButton');
+        let currentStream = null;
+        let useFrontCamera = true;
+
+        async function startCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+
+            const constraints = {
+                video: {
+                    facingMode: useFrontCamera ? "user" : "environment"
+                }
+            };
+
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoElement.srcObject = currentStream;
+
+                // Send the video stream to the /detect endpoint
+                const mediaRecorder = new MediaRecorder(currentStream);
+                mediaRecorder.ondataavailable = (event) => {
+                    fetch('/detect', {
+                        method: 'POST',
+                        body: event.data
+                    });
+                };
+                mediaRecorder.start(1000); // Sends data chunks every 1 second
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+            }
+        }
+
+        flipButton.addEventListener('click', () => {
+            useFrontCamera = !useFrontCamera;
+            startCamera();
+        });
+
+        // Start the camera on page load
+        window.addEventListener('load', startCamera);
+    </script>
+</body>
+</html>
